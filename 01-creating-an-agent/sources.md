@@ -2,6 +2,8 @@
 
 Claims were verified against the checked-out Microsoft Agent Framework repository and official documentation. Repository paths below are relative to the framework repository root.
 
+Framework commit examined: `edfe115ea06bca57ae5a123d0fac5b3fdda13603` (`main`, verified equal to `origin/main` after fetching on 2026-08-29).
+
 ## Framework overview and capability map
 
 - `README.md`
@@ -55,7 +57,6 @@ Claims were verified against the checked-out Microsoft Agent Framework repositor
 - `dotnet/tests/Microsoft.Agents.AI.OpenAI.UnitTests/Extensions/OpenAIChatClientExtensionsTests.cs`
   - Verified the OpenAI adapter creates an agent with the requested instructions and name.
 
-## OpenRouter compatibility
+## Project model configuration
 
-- `https://openrouter.ai/docs/quickstart`
-  - Verified the OpenAI-compatible base URL, API-key authentication pattern, and OpenRouter model identifiers.
+OpenRouter is the model transport selected for this series. Its endpoint and environment-variable names are project configuration defined in `AGENTS.md`; they are not used as authority for Microsoft Agent Framework behavior.
