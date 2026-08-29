@@ -1,43 +1,33 @@
 # Sources examined
 
-All repository paths below are relative to the upstream Microsoft Agent Framework repository root. Framework behavior was verified against checked-out source rather than assumed from pretrained API knowledge.
+Framework behavior was verified against the checked-out Microsoft Agent Framework repository. Repository paths below are relative to its root.
 
 ## Framework implementation
 
 - `dotnet/src/Microsoft.Agents.AI.Abstractions/AIAgent.cs`
-  - Verified the `AIAgent` abstraction, identity properties, `RunAsync` overloads, string-to-user-message conversion, and delegation to `RunCoreAsync`.
+  - Verified the common agent abstraction, `RunAsync` overloads, and conversion of string input into a user message.
 - `dotnet/src/Microsoft.Agents.AI/ChatClient/ChatClientExtensions.cs`
-  - Verified both `IChatClient.AsAIAgent` overloads and that they construct `ChatClientAgent`.
+  - Verified that `IChatClient.AsAIAgent(...)` constructs a `ChatClientAgent` with the supplied instructions and name.
 - `dotnet/src/Microsoft.Agents.AI/ChatClient/ChatClientAgent.cs`
-  - Verified constructor behavior, option cloning, default middleware installation, history-provider setup, option merging, session/message preparation, the `IChatClient.GetResponseAsync` call, and conversion to `AgentResponse`.
-- `dotnet/src/Microsoft.Agents.AI/ChatClient/ChatClientAgentOptions.cs`
-  - Verified the configuration object used for agent identity and default `ChatOptions`.
+  - Verified that `ChatClientAgent` derives from `AIAgent`, prepares messages and options, calls `IChatClient.GetResponseAsync(...)`, and returns an `AgentResponse`.
 - `dotnet/src/Microsoft.Agents.AI.Abstractions/AgentResponse.cs`
-  - Verified response wrapping and the `Text`, `Messages`, and `ToString` behavior.
-- `dotnet/src/Microsoft.Agents.AI.Abstractions/InMemoryChatHistoryProvider.cs`
-  - Verified the default local history provider used by `ChatClientAgent`.
+  - Verified the response abstraction and its `Text` property.
 - `dotnet/src/Microsoft.Agents.AI.OpenAI/Extensions/OpenAIChatClientExtensions.cs`
-  - Verified the current OpenAI `ChatClient` adapter and its use of `AsIChatClient` and `ChatClientAgent`.
+  - Verified the OpenAI chat-client adapter path used by the example.
 
-## Official samples
+## Official .NET sample
 
 - `dotnet/samples/02-agents/AgentProviders/openai/Agent_With_OpenAIChatCompletion/Program.cs`
-  - Verified the current OpenAI Chat Completions agent construction and `RunAsync` pattern.
-- `dotnet/samples/02-agents/AgentProviders/openai/Agent_With_OpenAIChatCompletion/Agent_With_OpenAIChatCompletion.csproj`
-  - Verified the source project reference required for the OpenAI client adapter.
-- `dotnet/samples/05-end-to-end/AGUIClientServer/AGUIServer/Program.cs`
-  - Verified construction of an `OpenAIClient` with a custom `OpenAIClientOptions.Endpoint` and conversion to `IChatClient`.
-- `dotnet/samples/04-hosting/af-hosting/local_responses_workflow/Client/Program.cs`
-  - Examined another official custom-endpoint example using `ApiKeyCredential`, `OpenAIClientOptions`, and Agent Framework.
+  - Verified the current pattern for creating an OpenAI chat-completion agent and calling `RunAsync`.
 
 ## Tests
 
 - `dotnet/tests/Microsoft.Agents.AI.UnitTests/ChatClient/ChatClientAgentTests.cs`
-  - Verified construction metadata, middleware wrapping, invocation of `IChatClient.GetResponseAsync`, instruction propagation, and assistant-response handling.
+  - Verified instruction and identity propagation, chat-client invocation, and response handling.
 - `dotnet/tests/Microsoft.Agents.AI.OpenAI.UnitTests/Extensions/OpenAIChatClientExtensionsTests.cs`
-  - Verified the OpenAI chat-client adapter produces a `ChatClientAgent` with the requested instructions, name, and description.
+  - Verified the OpenAI adapter creates an agent with the requested instructions and name.
 
-## OpenRouter compatibility reference
+## OpenRouter compatibility
 
 - `https://openrouter.ai/docs/quickstart`
-  - Verified that OpenRouter supports the OpenAI SDK compatibility path, uses `https://openrouter.ai/api/v1` as the base URL, accepts bearer API keys, and expects OpenRouter model identifiers.
+  - Verified the OpenAI-compatible base URL, API-key authentication pattern, and OpenRouter model identifiers.
