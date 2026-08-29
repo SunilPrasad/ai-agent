@@ -1,8 +1,8 @@
-# Video guide — Create your first Microsoft Agent Framework agent
+# Video guide — Meet Microsoft Agent Framework and create your first agent
 
 ## Learning outcome
 
-By the end of the video, the viewer can create one OpenRouter-backed `AIAgent`, run it once, and explain the responsibility of every important object in the program.
+By the end of the video, the viewer can explain what Microsoft Agent Framework is, distinguish an Agent from a Workflow and a Harness Agent at a high level, and create one OpenRouter-backed `AIAgent` while understanding every important code block.
 
 ## Prerequisites
 
@@ -13,120 +13,125 @@ By the end of the video, the viewer can create one OpenRouter-backed `AIAgent`, 
 
 ## Target length
 
-**9 minutes 30 seconds**
+**9 minutes 50 seconds**
 
 | Time | Section | Purpose |
 |---|---|---|
-| 0:00–0:40 | Hook | Show that the complete agent is a small console program |
-| 0:40–1:25 | Problem | Explain model-client code versus an application-facing agent |
-| 1:25–2:35 | Diagram | Walk from application to agent, chat client, OpenRouter, and back |
-| 2:35–3:05 | Configuration | Explain the two environment variables without showing secrets |
-| 3:05–6:55 | Code | Explain the program one block at a time |
-| 6:55–7:55 | Run | Execute the program and read the result |
-| 7:55–8:50 | Inside the framework | Explain `ChatClientAgent` and the internal request flow |
-| 8:50–9:30 | Recap and next step | Repeat the five key pieces and introduce `AIAgent` |
+| 0:00–0:35 | Hook | Show the final result and promise the framework map first |
+| 0:35–1:50 | What the framework is | Separate the framework, model provider, and model SDK |
+| 1:50–2:55 | Capability map | Introduce Agents, Workflows, Harness Agents, and the future roadmap |
+| 2:55–3:30 | Today's boundary | Locate the simple `ChatClientAgent` and name what is deliberately excluded |
+| 3:30–4:05 | Object ownership | Explain the provider SDK, `IChatClient`, Agent Framework, and OpenRouter boundary |
+| 4:05–7:15 | Code walkthrough | Explain every important code block in `Program.cs` |
+| 7:15–8:00 | Run the example | Execute it and connect the output back to the diagram |
+| 8:00–9:05 | Internal flow | Separate construction from the `RunAsync` request path |
+| 9:05–9:50 | Recap and next lesson | Repeat the framework map and introduce `AIAgent` |
 
-Do not add tools, sessions, streaming, memory, RAG, MCP, workflows, or harness agents to this video. They each deserve a separate lesson.
+The capability overview is a map, not a set of mini-tutorials. Do not explain tools, memory, RAG, MCP, workflows, multi-agent communication, or Harness internals beyond one-sentence definitions.
 
 ## Before recording
 
-1. Open `README.md` with Mermaid preview available.
-2. Open `Example/Program.cs` in the editor.
+1. Open `README.md` with Mermaid preview enabled.
+2. Open `Example/Program.cs`.
 3. Open a terminal in `01-creating-an-agent`.
-4. Set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` before screen capture begins.
-5. Clear terminal history so the API key cannot appear in the recording.
-6. Run `dotnet build Example/Example.csproj` once.
-7. Run the example once to confirm the selected model is available.
+4. Set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` before screen capture.
+5. Clear terminal history so credentials cannot appear.
+6. Run `dotnet build Example/Example.csproj`.
+7. Run the example once to confirm the model is available.
 
 ## Recording flow
 
-### 0:00–0:40 — Hook
+### 0:00–0:35 — Hook
 
-Show the final console output first.
+Show the final program and one successful output.
 
-Suggested talking point:
+Suggested opening:
 
-> We are going to create a real Microsoft Agent Framework agent in C#. By the end, every important line in this program will make sense.
+> This small C# program creates a real Microsoft Agent Framework agent. Before we explain the code, let us build the map: what the framework is, what it can do, and exactly where this tiny example fits.
 
-Do not define every term yet. Give the viewer a reason to continue.
+### 0:35–1:50 — What Microsoft Agent Framework is
 
-### 0:40–1:25 — State the problem
+Show the opening of `README.md`.
 
-Explain:
+Explain three boundaries:
 
-- OpenRouter gives us access to models.
-- The provider client knows how to send model requests.
-- Our application wants an agent with a clear job and a simple run API.
-- Agent Framework connects those two needs.
+1. The model generates text or decisions.
+2. The model SDK communicates with the provider endpoint.
+3. Microsoft Agent Framework structures the application around that model access.
 
-Use the telephone mental model: the chat client is the connection; the agent is the worker using it.
+Use the phrase **framework around the model, not the model itself**.
 
-### 1:25–2:35 — Explain the diagram
+Then explain why the framework becomes useful as an application adds state, tools, knowledge, orchestration, and production concerns.
 
-Show **The complete flow** in `README.md`.
+### 1:50–2:55 — Capability map
 
-Follow one direction only at first:
+Show **The framework map** diagram.
 
-1. C# calls `AIAgent.RunAsync`.
-2. The concrete `ChatClientAgent` uses `IChatClient`.
-3. The request travels through OpenRouter to the selected model.
-4. The result returns as `AgentResponse`.
+Define each item in one sentence:
 
-Then show the ownership diagram briefly. Emphasize that `OpenAIClient` is not inside Agent Framework and OpenRouter is an external service.
+- Agent: one callable AI capability through `AIAgent`.
+- Workflow: an explicit path of code or agent steps.
+- Harness Agent: a specialized, batteries-included `AIAgent` for longer interactive work.
 
-### 2:35–3:05 — Configuration
+Do not read every roadmap row. Mention only that later videos cover tools and MCP, memory and RAG, multi-agent orchestration, observability, and the official Harness Agent.
 
-Show only the environment-variable names:
+Do not explain how any of those capabilities work yet.
+
+### 2:55–3:30 — Set today's boundary
+
+Show **Where today's example fits**.
+
+Say clearly:
+
+> Today is one model connection, one instruction, one message, and one response. It is the first building block—not an autonomous system and not the whole framework.
+
+Point to `ChatClientAgent` under the Agent branch of the diagram.
+
+### 3:30–4:05 — Explain ownership
+
+Show **The objects in this example**.
+
+Follow the construction path:
 
 ```text
-OPENROUTER_API_KEY
-OPENROUTER_MODEL
+OpenAI SDK → IChatClient → ChatClientAgent/AIAgent
 ```
 
-Explain that secrets stay outside source code. Do not display the environment-variable values.
+Keep OpenRouter visibly outside the framework boundary. Explain that one runtime `ChatClientAgent` object is referenced through the `AIAgent` base type.
 
-### 3:05–6:55 — Walk through the code
+### 4:05–7:15 — Walk through the code
 
-Open `Example/Program.cs` and explain it in this order.
+Open `Example/Program.cs` and explain these blocks.
 
 #### Namespaces
 
-Point out that the namespaces reveal the boundaries:
-
-- `OpenAI` is the provider SDK.
-- `Microsoft.Extensions.AI` supplies the common chat abstraction.
-- `Microsoft.Agents.AI` supplies the agent abstraction.
+Use them to repeat ownership, not to teach basic `using` syntax.
 
 #### Environment variables
 
-Explain that the null-coalescing throw gives a clear startup error. Avoid turning this into a configuration-management lesson.
+Explain why secrets and the model identifier are configuration. Do not show their values.
 
 #### `OpenAIClient`
 
-Explain both constructor arguments:
-
-- `ApiKeyCredential` authenticates the request.
-- `Endpoint` changes the destination to OpenRouter.
-
-Repeat: this is a provider client, not the agent.
+Explain that this is the OpenAI SDK's root client and that the custom endpoint directs compatible requests to OpenRouter. Creating it is local.
 
 #### `IChatClient`
 
-Explain that `GetChatClient(model)` selects the model and `AsIChatClient()` creates the common interface expected by Agent Framework.
+Explain that `GetChatClient(model)` creates the model-specific provider client, then `AsIChatClient()` exposes the common Microsoft.Extensions.AI interface.
 
 #### `AIAgent`
 
-Explain that `AsAIAgent()` creates a `ChatClientAgent`. Read the instructions aloud and show how they define one small job.
+Explain that `AsAIAgent()` returns a concrete `ChatClientAgent`. The `AIAgent` variable shows the application-facing abstraction. Read the short instructions and name aloud.
 
 #### `RunAsync`
 
-Explain that this is the line that contacts the model. The earlier lines only built and connected objects.
+Mark this as the point where external I/O begins. Explain user message, instructions, chat-client call, and asynchronous waiting.
 
-#### `AgentResponse`
+#### `AgentResponse.Text`
 
-Show `response.Text`. Mention that richer response content exists, but it is outside this video's single concept.
+Explain that richer content exists but is deliberately excluded from Video 01. Remind viewers that model output varies and is untrusted.
 
-### 6:55–7:55 — Run the example
+### 7:15–8:00 — Run the example
 
 Run:
 
@@ -134,54 +139,57 @@ Run:
 dotnet run --project Example/Example.csproj
 ```
 
-Read the result, then connect it back to the diagram. Mention that exact wording varies because the response is generated.
+Read the output and trace it backwards through the ownership diagram. Do not debug provider configuration on camera; pause and fix it off camera if necessary.
 
-If the run fails, do not debug credentials during the recording. Pause and fix the environment or model identifier off camera.
+### 8:00–9:05 — Explain the internal flow
 
-### 7:55–8:50 — What happened internally?
+Show **Construction flow versus request flow**.
 
-Return to the flow diagram and explain:
+Emphasize:
 
-1. `AsAIAgent()` created `ChatClientAgent`.
-2. `RunAsync` converted the string into a user message.
-3. The agent combined the user message with its instructions.
-4. It called `IChatClient`.
-5. It returned an `AgentResponse`.
+- Constructors and adapters configure local objects.
+- `RunAsync` converts text into a user message.
+- `ChatClientAgent` adds instructions and calls `IChatClient`.
+- The framework returns `AgentResponse`.
 
-Keep this at mental-model depth. Do not open framework source during the first video.
+Do not open source files in this introductory recording. `sources.md` lets interested viewers inspect them afterward.
 
-### 8:50–9:30 — Recap and transition
+### 9:05–9:50 — Recap and transition
 
-Recap with five short phrases:
+Ask the viewer to remember:
 
-1. OpenRouter hosts the model connection.
-2. `OpenAIClient` talks to the compatible endpoint.
-3. `IChatClient` is the common boundary.
-4. `AIAgent` is what the application uses.
-5. `RunAsync` performs the work.
+1. Agent Framework is around the model, not the model.
+2. Agents, Workflows, and Harness Agents solve different problems.
+3. Today's runtime object is one `ChatClientAgent` referenced as `AIAgent`.
+4. `IChatClient` is the provider-neutral boundary.
+5. `RunAsync` starts the request.
 
-Close by introducing Video 02:
+Close with:
 
-> We created an `AIAgent`, but why is it an abstraction instead of just a concrete class? That is the one question we will answer next.
+> We used the `AIAgent` type, but we have not yet explained why it is the common abstraction. That single question is Video 02.
 
 ## Likely beginner questions
 
-### Is `OpenAIClient` part of Microsoft Agent Framework?
+### Is Microsoft Agent Framework another AI model?
 
-No. It comes from the OpenAI .NET SDK. Agent Framework receives the adapted `IChatClient`.
+No. It is an application framework that works around model clients and agent services.
+
+### Is `OpenAIClient` part of Agent Framework?
+
+No. It comes from the OpenAI .NET SDK. The adapter exposes its model-specific chat client as `IChatClient`.
 
 ### Are we calling OpenAI directly?
 
-No. The custom endpoint points the compatible SDK at OpenRouter.
+No. The custom endpoint directs the compatible SDK request to OpenRouter.
+
+### Is `AIAgent` a second object wrapping `ChatClientAgent`?
+
+No. The one runtime object is a `ChatClientAgent`; `AIAgent` is its base type and the variable's declared type.
+
+### Is this agent autonomous?
+
+No. It performs one call. Tools, loops, planning, memory, and Harness behavior are later topics.
 
 ### Why not call `IChatClient` directly?
 
-That can be enough for a tiny chat request. `AIAgent` gives the application an agent abstraction that can later participate in the rest of Agent Framework.
-
-### Does creating the agent spend tokens?
-
-No. The model request starts when `RunAsync` is called.
-
-### Why can the output be different each time?
-
-The model generates the response. We are verifying the code path, not a fixed sentence.
+That can be enough for a tiny stateless request. `AIAgent` gives application code the common Agent Framework run and session abstraction and a path to further capabilities.

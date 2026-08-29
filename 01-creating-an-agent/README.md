@@ -1,96 +1,187 @@
-# Video 01 — Create your first agent
+# Video 01 — Meet Microsoft Agent Framework and create your first agent
 
-## The idea in one sentence
+## What you will learn
 
-An `AIAgent` gives your application one simple object for sending work to an AI model and receiving a response.
+By the end of this lesson, you will understand what Microsoft Agent Framework is, what kinds of applications it can grow into, and how to create its smallest useful agent in C#.
 
-This lesson teaches only that idea: create one agent and run it once.
+The code demonstrates one intentionally small path:
 
-## What problem does it solve?
-
-A model provider gives us a client that can send chat requests. That is useful, but an application usually wants to describe an AI capability such as a support assistant, code reviewer, or document helper.
-
-Microsoft Agent Framework puts an agent abstraction in front of the model client. Your application can ask the agent to do work without knowing every provider-specific detail.
-
-## A simple mental model
-
-Think of the chat client as a telephone connection to the model.
-
-The agent is the person using that telephone. It has a name and instructions describing its job. Your application talks to the agent, and the agent uses the connection to reach the model.
-
-## The complete flow
-
-```mermaid
-flowchart LR
-    App["Your C# program"] -->|"RunAsync(question)"| Agent["AIAgent"]
-    Agent --> Concrete["ChatClientAgent"]
-    Concrete --> Client["IChatClient"]
-    Client --> Router["OpenRouter"]
-    Router --> Model["Selected AI model"]
-    Model -->|"Generated text"| Response["AgentResponse"]
-    Response --> App
+```text
+OpenAI SDK client → IChatClient → ChatClientAgent (used as AIAgent)
 ```
 
-Creating the agent does not contact the model. The network request happens when the program calls `RunAsync`.
+Everything else in this README gives you the map around that first step.
 
-## The important pieces
+## What is Microsoft Agent Framework?
 
-| Piece | What it does | Where it comes from |
-|---|---|---|
-| `OpenAIClient` | Creates an OpenAI-compatible model client pointed at OpenRouter | OpenAI .NET SDK |
-| `IChatClient` | Gives .NET code a provider-neutral chat interface | Microsoft.Extensions.AI |
-| `AIAgent` | Gives application code a common agent abstraction | Microsoft Agent Framework |
-| `ChatClientAgent` | Implements `AIAgent` by using an `IChatClient` | Microsoft Agent Framework |
-| `AgentResponse` | Contains the result returned by the agent | Microsoft Agent Framework |
-| OpenRouter | Sends the request to the selected model | External service |
+Microsoft Agent Framework is an open framework for building AI agents and multi-agent workflows in .NET and Python. It gives application code a consistent way to create agents, run them, give them tools and context, coordinate multi-step work, and add operational features needed beyond a prototype.
 
-## Where the types live
+It is important to separate the framework from the model:
+
+- **OpenRouter** routes the compatible request to the selected model.
+- **The selected model** generates the response.
+- **A model SDK** knows how to communicate with that model endpoint.
+- **Microsoft Agent Framework** gives your application agent abstractions, execution patterns, state, composition, and extension points around model access.
+
+The framework does not make the model smarter. It gives developers a structured way to build software around the model.
+
+## Why use a framework instead of only a model client?
+
+A raw model client solves one problem: send input to a model and receive output.
+
+An agent application usually grows beyond that first call. It may need richer agent behavior such as tools, conversations, memory, or RAG; controlled coordination between code, people, and agents; and operational support such as safety, approvals, telemetry, and evaluation.
+
+Microsoft Agent Framework provides a common foundation for adding those capabilities without inventing a new application structure for each one.
+
+## The framework map
+
+At the highest level, Microsoft Agent Framework has three ideas to keep separate:
 
 ```mermaid
 flowchart TB
+    MAF["Microsoft Agent Framework"]
+
+    Agent["Agents<br/>one callable AI capability"]
+    Workflow["Workflows<br/>explicit multi-step coordination"]
+    Harness["Harness Agents<br/>batteries-included agents for long tasks"]
+
+    MAF --> Agent
+    MAF --> Workflow
+    MAF --> Harness
+
+    Harness -. "is a specialized AIAgent" .-> Agent
+    Workflow -. "can coordinate agents" .-> Agent
+    Workflow -. "can be exposed as an AIAgent" .-> Agent
+
+    Today["This lesson:<br/>one ChatClientAgent"]
+    Today --> Agent
+```
+
+| Concept | Simple meaning | Example use |
+|---|---|---|
+| **Agent** | One callable AI capability behind the common `AIAgent` base abstraction | A support assistant that can answer questions and call support tools |
+| **Workflow** | An explicit graph of code or agent steps connected in an order you control | Triage an incident, request human approval, then run remediation |
+| **Harness Agent** | An opinionated `AIAgent` with scaffolding for long interactive tasks | A coding or research agent that tracks todos, uses tools, manages context, and can use configured bounded loops to keep progressing |
+
+These concepts can work together, but they are not the same thing. A workflow is useful when your code should control the path. A Harness Agent is useful when an agent needs built-in support for longer, tool-driven work.
+
+## Capability roadmap
+
+This first video does not teach all these capabilities. It shows where the series is heading.
+
+| Capability area | What it adds |
+|---|---|
+| **Model connections** | Connect application-owned agents to different model providers through common abstractions |
+| **Messages and responses** | Regular runs, streaming, multimodal content, and structured output |
+| **Sessions and context** | Multi-turn conversations and relevant runtime information |
+| **Memory and RAG** | Recall stored information and retrieve knowledge to ground an answer |
+| **Tools and MCP** | Let an agent call C# functions or capabilities exposed by external MCP servers |
+| **Middleware and operations** | Add cross-cutting behavior, observability, evaluation, approvals, and safety controls |
+| **Workflows and multi-agent orchestration** | Coordinate agents, code, state, human input, checkpoints, and controlled execution paths |
+| **Harness Agents** | Assemble planning, todos, memory, skills, compaction, approvals, and optional looping or delegation for longer work |
+| **Hosting and protocols** | Expose agents and integrate with other systems or agents |
+
+Later videos will teach these one small concept at a time.
+
+## Where today's example fits
+
+Today we use only the smallest Agent path:
+
+- One model connection through OpenRouter.
+- One set of instructions.
+- One user message.
+- One returned response.
+
+The example has **no tools, session, external memory, RAG, MCP, workflow, multi-agent communication, or autonomous loop**. A single `RunAsync` call should not be mistaken for the entire framework.
+
+## A .NET mental model
+
+Think of the layers like an application service built over a lower-level client:
+
+```text
+Your application
+    uses AIAgent                         application-facing contract
+        runtime object: ChatClientAgent Agent Framework implementation
+            uses IChatClient             provider-neutral model boundary
+                wraps OpenAI SDK client  endpoint-specific communication
+                    calls OpenRouter      external model service
+```
+
+`IChatClient` is similar to a client interface that hides transport-specific details. `ChatClientAgent` adds the agent's identity, instructions, session/run contract, and Agent Framework pipeline around that client.
+
+## The objects in this example
+
+```mermaid
+flowchart LR
+    Program["Your C# program"]
+
     subgraph OpenAISdk["OpenAI .NET SDK"]
-        OpenAIClient["OpenAIClient"]
-        ProviderChatClient["OpenAI.Chat.ChatClient"]
+        RootClient["OpenAIClient<br/>root/factory client"]
+        ModelClient["OpenAI.Chat.ChatClient<br/>model-specific client"]
     end
 
-    subgraph ExtensionsAI["Microsoft.Extensions.AI"]
+    subgraph ExtensionsAIAdapter["Microsoft.Extensions.AI.OpenAI adapter package"]
         Adapter["AsIChatClient()"]
-        IChatClient["IChatClient"]
+    end
+
+    subgraph ExtensionsAI["Microsoft.Extensions.AI abstractions"]
+        ChatContract["IChatClient"]
     end
 
     subgraph AgentFramework["Microsoft Agent Framework"]
         AgentAdapter["AsAIAgent()"]
-        ChatClientAgent["ChatClientAgent"]
-        AIAgent["AIAgent"]
+        RuntimeAgent["ChatClientAgent<br/>runtime object"]
+        AgentContract["AIAgent<br/>variable/base type"]
+        Response["AgentResponse"]
     end
 
-    OpenRouter["OpenRouter service"]
+    Router["OpenRouter<br/>external service"]
 
-    OpenAIClient --> ProviderChatClient
-    ProviderChatClient --> Adapter --> IChatClient
-    IChatClient --> AgentAdapter --> ChatClientAgent
-    ChatClientAgent -. "inherits from" .-> AIAgent
-    ProviderChatClient -->|"HTTPS request"| OpenRouter
+    Program --> RootClient --> ModelClient --> Adapter --> ChatContract
+    ChatContract --> AgentAdapter --> RuntimeAgent
+    RuntimeAgent -. "is an" .-> AgentContract
+    ModelClient -->|"HTTPS when RunAsync executes"| Router
+    RuntimeAgent --> Response --> Program
 ```
 
-The important boundary is `IChatClient`. The OpenAI SDK side knows how to communicate with an OpenAI-compatible endpoint. Agent Framework works with the common chat interface and does not need OpenRouter-specific agent code.
+There are not two agent objects in this diagram. `AsAIAgent()` creates one `ChatClientAgent`; the program stores that object in a variable whose type is the base abstraction `AIAgent`.
+
+## Which package owns each piece?
+
+The project directly references one integration package:
+
+```xml
+<PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.19.0" />
+```
+
+That package brings the required Agent Framework and OpenAI adapter dependencies into the project. This is why the program can use types from several namespaces with one direct package reference.
+
+| Code element | Owner/package role |
+|---|---|
+| `ApiKeyCredential` | `System.ClientModel`; represents the API credential |
+| `OpenAIClient` and `OpenAI.Chat.ChatClient` | OpenAI .NET SDK; create the OpenAI-compatible provider clients |
+| `AsIChatClient()` | `Microsoft.Extensions.AI.OpenAI` adapter package; adapts the provider client |
+| `IChatClient` | Microsoft.Extensions.AI abstraction; common chat-client contract |
+| `AsAIAgent()` and `ChatClientAgent` | Microsoft Agent Framework; create and implement the chat-client-backed agent |
+| `AIAgent` and `AgentResponse` | Microsoft Agent Framework abstractions; common run contract and response |
+| OpenRouter | External service; routes the OpenAI-compatible request to the selected model |
 
 ## Before running the example
 
-Set two environment variables in PowerShell:
+Set these environment variables in PowerShell:
 
 ```powershell
 $env:OPENROUTER_API_KEY = "<your-key>"
 $env:OPENROUTER_MODEL = "<provider/model>"
 ```
 
-Use an OpenRouter model identifier for `OPENROUTER_MODEL`. Never place the real API key in source code or show it during a recording.
+Use a valid OpenRouter model identifier. Never place a real API key in the code, a commit, or a video recording.
 
 ## Code walkthrough
 
 The complete program is in [Example/Program.cs](Example/Program.cs).
 
-### 1. Import the required namespaces
+### 1. Import the namespaces
 
 ```csharp
 using System.ClientModel;
@@ -99,14 +190,16 @@ using Microsoft.Extensions.AI;
 using OpenAI;
 ```
 
-- `System.ClientModel` provides `ApiKeyCredential`.
-- `OpenAI` provides `OpenAIClient` and its configuration.
-- `Microsoft.Extensions.AI` provides `IChatClient` and the adapter extension methods.
-- `Microsoft.Agents.AI` provides `AIAgent`, `AsAIAgent`, and `AgentResponse`.
+These namespaces reveal the layers we just mapped:
 
-These namespaces are mixed deliberately because the program connects an external model SDK to Agent Framework.
+- `System.ClientModel` supplies the credential type.
+- `OpenAI` supplies the provider SDK client.
+- `Microsoft.Extensions.AI` is the namespace used for both the common chat abstraction and the adapter extension in this code. Namespace and NuGet package ownership are different: `IChatClient` comes from the abstractions package, while the OpenAI-specific `AsIChatClient()` adapter comes from `Microsoft.Extensions.AI.OpenAI`.
+- `Microsoft.Agents.AI` supplies the Agent Framework types.
 
-### 2. Read configuration
+No work happens at runtime merely because a namespace is imported.
+
+### 2. Read configuration safely
 
 ```csharp
 string apiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY")
@@ -115,9 +208,9 @@ string model = Environment.GetEnvironmentVariable("OPENROUTER_MODEL")
     ?? throw new InvalidOperationException("OPENROUTER_MODEL is not set.");
 ```
 
-The values come from the environment instead of source code. The program stops with a useful message if either value is missing.
+The API key and model name stay outside source code. If either variable is absent, the program stops immediately with a clear message instead of failing later during a model request.
 
-### 3. Create the provider client
+### 3. Point the OpenAI-compatible SDK at OpenRouter
 
 ```csharp
 OpenAIClient openAIClient = new(
@@ -128,9 +221,11 @@ OpenAIClient openAIClient = new(
     });
 ```
 
-`OpenAIClient` normally speaks to an OpenAI-compatible API. Setting `Endpoint` directs those requests to OpenRouter. This object is not yet an Agent Framework agent.
+`OpenAIClient` is the OpenAI SDK's root client. `ApiKeyCredential` supplies authentication. Changing `Endpoint` means the compatible SDK will send requests to OpenRouter rather than the OpenAI service.
 
-### 4. Create the common chat client
+This creates a local client object. It does not send a request or spend model tokens.
+
+### 4. Select the model and create `IChatClient`
 
 ```csharp
 IChatClient chatClient = openAIClient
@@ -138,7 +233,12 @@ IChatClient chatClient = openAIClient
     .AsIChatClient();
 ```
 
-`GetChatClient(model)` selects the configured OpenRouter model. `AsIChatClient()` adapts the OpenAI SDK client to the common `IChatClient` interface used by Agent Framework.
+Two things happen here:
+
+1. `GetChatClient(model)` creates an `OpenAI.Chat.ChatClient` for the chosen OpenRouter model.
+2. `AsIChatClient()` adapts it to the provider-neutral `IChatClient` interface.
+
+Agent Framework can now depend on `IChatClient` rather than on provider-specific application code. No network request has been made yet.
 
 ### 5. Create the agent
 
@@ -148,9 +248,12 @@ AIAgent agent = chatClient.AsAIAgent(
     name: "DotNetTeacher");
 ```
 
-`AsAIAgent()` creates a `ChatClientAgent` around the chat client. We store it as `AIAgent` because that is the common abstraction application code can use.
+`AsAIAgent()` creates one `ChatClientAgent` around the `IChatClient`. That concrete object is stored in a variable typed as `AIAgent`.
 
-The instructions describe the agent's job. The name makes the agent easier to identify. Creating it still does not send a model request.
+- `instructions` describe the agent's job and expected style.
+- `name` gives the capability an identity that logs, hosts, or application code can recognize.
+
+Creating the agent configures local objects. It still does not call the model.
 
 ### 6. Run the agent
 
@@ -158,64 +261,93 @@ The instructions describe the agent's job. The name makes the agent easier to id
 AgentResponse response = await agent.RunAsync("What is an AI agent?");
 ```
 
-`RunAsync` receives the user's text. Agent Framework turns that text into a user message, combines it with the instructions, and asks the chat client for a response.
+This is the line that starts the model request.
 
-The call is asynchronous because it performs a network request.
+Agent Framework receives the user text through its common run interface. The `ChatClientAgent` prepares the user message and instructions, then calls its `IChatClient`. The call is asynchronous because it performs external I/O.
 
-### 7. Display the result
+### 7. Read the response
 
 ```csharp
 Console.WriteLine(response.Text);
 ```
 
-`AgentResponse` can hold more than text, but this first lesson needs only its `Text` property.
+Agent Framework returns an `AgentResponse`. It can contain richer message content, but this lesson uses only the generated text.
 
-## Run it
+Model output can vary and should be treated as untrusted data when it affects important application behavior.
+
+## Build and run
 
 From the lesson directory:
 
 ```powershell
+dotnet build Example/Example.csproj
 dotnet run --project Example/Example.csproj
 ```
 
-The wording can change because the model generates the answer. The output should look similar to:
+The response wording may change. It should look similar to:
 
 ```text
 An AI agent is a model-powered component that follows instructions to perform a task for your application.
 ```
 
-## What happens inside Agent Framework?
+## Construction flow versus request flow
 
-The short version is:
+```mermaid
+sequenceDiagram
+    participant App as C# program
+    participant SDK as OpenAI SDK client
+    participant Agent as ChatClientAgent : AIAgent
+    participant Chat as IChatClient
+    participant Router as OpenRouter
+    participant Model as Selected model
 
-1. `AsAIAgent()` creates a `ChatClientAgent`.
-2. `RunAsync(string)` turns the string into a user `ChatMessage`.
-3. The agent adds its instructions to the chat options.
-4. The agent calls `IChatClient.GetResponseAsync(...)`.
-5. It converts the returned chat response into an `AgentResponse`.
+    Note over App,Agent: Local construction — no model request
+    App->>SDK: Create OpenAIClient and select model
+    App->>Chat: Adapt provider client with AsIChatClient()
+    App->>Agent: Create with AsAIAgent()
 
-The framework also prepares extension points for tools, sessions, middleware, and other capabilities. We intentionally do not use those features in this lesson.
+    Note over App,Model: External request begins here
+    App->>Agent: RunAsync(user text)
+    Agent->>Chat: GetResponseAsync(messages, options)
+    Chat->>Router: OpenAI-compatible HTTPS request
+    Router->>Model: Route request
+    Model-->>Router: Generated response
+    Router-->>Chat: Compatible response
+    Chat-->>Agent: ChatResponse
+    Agent-->>App: AgentResponse
+```
 
-## When should I use an agent?
+This distinction matters: object construction configures the path; `RunAsync` uses it.
 
-Use an agent when your application has a named AI capability with a particular job or set of instructions. Starting with `AIAgent` also gives you a consistent place to add more Agent Framework capabilities later.
+## What Agent Framework does internally for this run
 
-## When might a chat client be enough?
+For this specific example:
 
-For one small, stateless model call with no agent behavior, calling `IChatClient` directly may be simpler.
+1. `AsAIAgent()` constructs a `ChatClientAgent` around the supplied `IChatClient`.
+2. `RunAsync(string)` converts the string into a user `ChatMessage`.
+3. The agent combines its configured instructions with the run's messages and options.
+4. It calls `IChatClient.GetResponseAsync(...)`.
+5. It converts the returned `ChatResponse` into `AgentResponse`.
 
-An agent also does not make generated text automatically correct or safe. Important output still needs appropriate validation.
+That is all the viewer needs for the first lesson. Later lessons will open the same pipeline to add sessions, tools, context, middleware, and other behavior.
+
+## When should I start with an agent?
+
+Use `AIAgent` when your application is defining a named AI capability with instructions and may later need other Agent Framework features or participate in orchestration.
+
+A direct `IChatClient.GetResponseAsync(...)` call can be enough for a tiny, stateless model request that does not benefit from the agent abstraction.
 
 ## Recap
 
-- `OpenAIClient` connects to OpenRouter.
-- `IChatClient` is the common model-client boundary.
-- `AsAIAgent()` wraps that client in a `ChatClientAgent`.
-- Application code works through `AIAgent`.
-- `RunAsync` sends the request and returns an `AgentResponse`.
+- Microsoft Agent Framework is the application framework around model access; it is not the model provider.
+- Its three high-level ideas are Agents, Workflows, and Harness Agents.
+- This lesson uses one `ChatClientAgent`, referenced through `AIAgent`.
+- The provider SDK connects to OpenRouter and is adapted to `IChatClient`.
+- Creating clients and the agent is local; `RunAsync` starts the external request.
+- The small example is the first building block, not the framework's full capability set.
 
 ## Next lesson
 
-Video 02 will focus on `AIAgent` itself: what the abstraction represents and why different agent implementations can share the same run interface.
+Video 02 will focus on `AIAgent`: what the common abstraction represents and why different agent implementations can share the same run and session contract.
 
-See [sources.md](sources.md) for the framework implementation, sample, test, and compatibility references used to verify this lesson.
+See [sources.md](sources.md) for the exact framework source, samples, tests, and official overview pages used to verify this lesson.
