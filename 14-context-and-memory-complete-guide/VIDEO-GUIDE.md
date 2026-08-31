@@ -19,13 +19,14 @@ Session 13 is not required because invalid structured output is independent of t
 | Time | Section |
 |---|---|
 | 0:00–0:50 | Hook: the model does not know changing application state |
-| 0:50–2:05 | Prepare, run, learn lifecycle diagram |
-| 2:05–3:15 | Register one `AIContextProvider` |
-| 3:15–4:40 | Before hook: inject dynamic context and memory |
-| 4:40–6:05 | After hook: store one selected preference |
-| 6:05–7:35 | Run twice and watch context change |
-| 7:35–9:10 | Conversation history versus memory |
-| 9:10–10:25 | New session, then copy only the profile |
+| 0:50–1:50 | Prepare, run, learn lifecycle diagram |
+| 1:50–2:40 | Trace the OpenRouter-to-`IChatClient` setup chain |
+| 2:40–3:35 | Register one `AIContextProvider` |
+| 3:35–4:50 | Before hook: inject dynamic context and memory |
+| 4:50–6:20 | After hook: parse and store one selected preference |
+| 6:20–7:35 | Run twice and watch context change |
+| 7:35–8:55 | Conversation history versus memory |
+| 8:55–10:25 | New session, then copy only the profile |
 | 10:25–11:05 | Trust, token, persistence, and scope boundaries |
 | 11:05–11:40 | Recap and RAG transition |
 
@@ -37,7 +38,7 @@ Change `supportStatus` in the code and ask: “How could the model know this cha
 
 1. Show the README sequence diagram and name the phases: prepare, run, learn.
 2. Open `Example/Program.cs` and follow its six section comments.
-3. Skim OpenRouter setup because it is already familiar.
+3. Trace setup once: environment variables → credential and endpoint → OpenAI SDK chat client → `IChatClient` adapter → `AIAgent`.
 4. Show the mutable `supportStatus`, provider constructor, and `AIContextProviders` registration.
 5. Explain `ProvideAIContextAsync` before `StoreAIContextAsync` so retrieval precedes storage in the mental model.
 6. Run conversation A and connect each provider trace to the lifecycle.
@@ -48,7 +49,8 @@ Change `supportStatus` in the code and ask: “How could the model know this cha
 ## Exact files and code sections to show
 
 - `README.md`: request lifecycle diagram and history-versus-memory table.
-- `Example/Program.cs`, Section 2: runtime status and provider registration.
+- `Example/Program.cs`, Section 1: environment configuration and the OpenRouter-to-`IChatClient` adapter chain.
+- Section 2: runtime status and provider registration.
 - Section 3: explicit preference input and application-visible memory.
 - Section 4: changed dynamic context.
 - Section 5: separate session and deliberate memory copy.
@@ -61,6 +63,13 @@ dotnet run --project lessons/14-context-and-memory-complete-guide/Example
 ```
 
 ## Talking points by code section
+
+### Configuration and adapters
+
+- Missing environment variables fail before any network request.
+- The OpenAI SDK targets OpenRouter's compatible endpoint and selects `OPENROUTER_MODEL`.
+- `AsIChatClient` crosses into Microsoft.Extensions.AI; `AsAIAgent` crosses into Agent Framework.
+- Client construction does not call the model; `RunAsync` does.
 
 ### Registration
 
@@ -78,7 +87,8 @@ dotnet run --project lessons/14-context-and-memory-complete-guide/Example
 ### After phase
 
 - `StoreAIContextAsync` runs after a successful invocation through the base lifecycle.
-- The prefix, lowercase normalization, and allow-list make this demo deterministic.
+- Trace the real parser: external user message, prefix search, slice, punctuation boundary, trim, lowercase normalization, allow-list, then `SaveState`.
+- `IndexOf` accepts the marker anywhere in the message; this is deterministic demo syntax, not natural-language extraction.
 - Store selected information, not untrusted model prose by default.
 
 ### History versus memory
@@ -106,6 +116,8 @@ Pause on four deterministic signals:
 4. after `SetProfile`, the provider supplies `train`; B retains only its own history.
 
 Model prose can differ. Do not present exact response wording as guaranteed.
+
+The second `[provider before]` line appears before the `SAME CONVERSATION` heading because the program prints that heading after the awaited `RunAsync`. Point out this ordering when pausing on the trace.
 
 ## Likely beginner questions
 

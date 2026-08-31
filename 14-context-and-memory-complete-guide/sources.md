@@ -1,6 +1,6 @@
 # Sources
 
-Framework commit examined: `a617392cc79b1ac44e457f49e3d754ae2578a065`
+Framework commit examined: `6a0773ba2180e8036d138dbb9794ae64ec2d978b`
 
 ## Official documentation
 
